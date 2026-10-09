@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101628">
+  <meta name="description" content="En fargerik ball som spretter mindre og mindre til den ligger stille.">
+  <title>Sprett!</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23101628'/%3E%3Ccircle cx='32' cy='27' r='16' fill='%23ff5d8f'/%3E%3Cellipse cx='32' cy='50' rx='20' ry='4' fill='%23ffffff' opacity='.35'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: dark; --ball: #ff5d8f; --ink: #f8fbff; --muted: #b9c2d8; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100svh;
+      overflow: hidden;
+      font-family: ui-rounded, "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(91, 224, 255, .19), transparent 28rem),
+        radial-gradient(circle at 88% 18%, rgba(255, 93, 143, .18), transparent 25rem),
+        linear-gradient(150deg, #101628 0%, #18213b 58%, #101527 100%);
+    }
+    main { min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 5vw, 4.5rem) .5rem;
+    }
+    h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 3.5rem); letter-spacing: -.05em; }
+    .status {
+      margin: 0; padding: .55rem .9rem; border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.06);
+      font-size: .9rem; font-weight: 700; backdrop-filter: blur(12px);
+    }
+    .stage { position: relative; min-height: 18rem; margin: 0 clamp(1rem, 4vw, 3.5rem); }
+    .stage::before {
+      content: ""; position: absolute; inset: 8% 0 0; border: 1px solid rgba(255,255,255,.1);
+      border-bottom: 0; border-radius: 2rem 2rem 0 0;
+      background: linear-gradient(rgba(255,255,255,.035), rgba(255,255,255,.01));
+      box-shadow: inset 0 1px rgba(255,255,255,.08);
+    }
+    .floor {
+      position: absolute; left: 2%; right: 2%; bottom: 10%; height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.55) 15%, rgba(255,255,255,.55) 85%, transparent);
+    }
+    .shadow {
+      position: absolute; left: 50%; bottom: calc(10% + 3px); width: 8rem; height: 1.15rem;
+      transform: translateX(-50%) scale(.55); border-radius: 50%; background: rgba(0,0,0,.48);
+      filter: blur(7px); opacity: .45; will-change: transform, opacity;
+    }
+    .ball {
+      position: absolute; left: 50%; bottom: calc(10% + 2px); width: clamp(4.75rem, 11vw, 7.2rem);
+      aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
+      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.95) 0 5%, rgba(255,255,255,.3) 6%, transparent 20%), var(--ball);
+      box-shadow: inset -1.1rem -1.4rem 1.8rem rgba(0,0,0,.24), 0 1.2rem 2rem rgba(0,0,0,.22);
+      will-change: transform; cursor: pointer;
+    }
+    .ball::after { content: ""; position: absolute; inset: 10%; border-radius: inherit; border: 1px solid rgba(255,255,255,.14); }
+    footer {
+      display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .8rem;
+      padding: 1rem 1.25rem clamp(1.3rem, 4vw, 3rem);
+    }
+    button {
+      min-height: 3.25rem; border: 0; border-radius: 1rem; padding: .8rem 1.15rem;
+      font: inherit; font-size: 1rem; font-weight: 800; cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(1px) scale(.98); }
+    button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .color-button { display: inline-flex; align-items: center; gap: .7rem; color: var(--ink); background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); }
+    .swatch { width: 1.45rem; aspect-ratio: 1; border-radius: 50%; background: var(--ball); box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
+    .bounce-button { color: #101628; background: #fff; box-shadow: 0 .65rem 1.8rem rgba(0,0,0,.2); }
+    .hint { flex-basis: 100%; margin: .15rem 0 0; text-align: center; color: var(--muted); font-size: .85rem; }
+    @media (max-height: 580px) {
+      header { padding-top: .8rem; } .stage { min-height: 12rem; } footer { padding-bottom: .8rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sprett!</h1>
+      <p class="status" id="status" aria-live="polite">Spretter</p>
+    </header>
+    <section class="stage" id="stage" aria-label="Animasjon av en sprettende ball">
+      <div class="floor"></div>
+      <div class="shadow" id="shadow"></div>
+      <div class="ball" id="ball" role="img" aria-label="Farget ball"></div>
+    </section>
+    <footer>
+      <button class="color-button" id="colorButton" type="button" aria-label="Bytt farge på ballen">
+        <span class="swatch" aria-hidden="true"></span><span>Bytt farge</span>
+      </button>
+      <button class="bounce-button" id="bounceButton" type="button">Sprett på nytt</button>
+      <p class="hint">Tips: Trykk mellomrom for å slippe ballen igjen.</p>
+    </footer>
+  </main>
+  <script>
+    const ball = document.querySelector('#ball');
+    const shadow = document.querySelector('#shadow');
+    const stage = document.querySelector('#stage');
+    const status = document.querySelector('#status');
+    const colorButton = document.querySelector('#colorButton');
+    const bounceButton = document.querySelector('#bounceButton');
+    const colors = ['#ff5d8f', '#5be0ff', '#ffcc4a', '#9d7cff', '#57e389', '#ff7a45'];
+    let colorIndex = 0;
+    let frame = 0;
+    let lastTime = 0;
+    let y = 0;
+    let velocity = 0;
+    let running = false;
+    let restFrames = 0;
+
+    function floorHeight() {
+      const ballSize = ball.getBoundingClientRect().height;
+      const available = stage.clientHeight * .8 - ballSize;
+      return Math.max(90, available);
+    }
+
+    function render() {
+      const max = floorHeight();
+      const heightRatio = Math.min(1, y / max);
+      const impact = Math.max(0, Math.min(1, -velocity / 1250));
+      const squash = y < 4 && velocity < 0 ? impact : 0;
+      ball.style.transform = `translateX(-50%) translateY(${-y}px) scale(${1 + squash * .14}, ${1 - squash * .12})`;
+      shadow.style.transform = `translateX(-50%) scale(${.56 + (1 - heightRatio) * .44}, ${.58 + (1 - heightRatio) * .42})`;
+      shadow.style.opacity = String(.18 + (1 - heightRatio) * .32);
+    }
+
+    function tick(time) {
+      if (!running) return;
+      const dt = Math.min((time - lastTime) / 1000 || 0, .025);
+      lastTime = time;
+      velocity -= 1800 * dt;
+      y += velocity * dt;
+
+      if (y <= 0) {
+        y = 0;
+        if (Math.abs(velocity) < 115) {
+          restFrames++;
+          velocity = 0;
+          if (restFrames > 3) {
+            running = false;
+            status.textContent = 'Ligger stille';
+            render();
+            return;
+          }
+        } else {
+          velocity = -velocity * .69;
+          restFrames = 0;
+        }
+      }
+      render();
+      frame = requestAnimationFrame(tick);
+    }
+
+    function bounce() {
+      cancelAnimationFrame(frame);
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      y = 0;
+      velocity = reduced ? 470 : Math.min(920, Math.max(690, floorHeight() * 2.2));
+      running = true;
+      restFrames = 0;
+      lastTime = 0;
+      status.textContent = 'Spretter';
+      frame = requestAnimationFrame(tick);
+    }
+
+    function changeColor() {
+      colorIndex = (colorIndex + 1) % colors.length;
+      document.documentElement.style.setProperty('--ball', colors[colorIndex]);
+    }
+
+    colorButton.addEventListener('click', changeColor);
+    bounceButton.addEventListener('click', bounce);
+    ball.addEventListener('click', bounce);
+    addEventListener('keydown', event => {
+      if (event.code === 'Space' && event.target.tagName !== 'BUTTON') {
+        event.preventDefault();
+        bounce();
+      }
+    });
+    addEventListener('resize', render);
+    bounce();
+  </script>
+</body>
+</html>
